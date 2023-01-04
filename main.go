@@ -55,6 +55,7 @@ func GenerateFile(
 	// imports
 	g.P("import (")
 	g.P("\t\"context\"")
+	g.P("\"encoding/json\"")
 	g.P("\t\"github.com/valyala/fasthttp\"")
 	g.P(")")
 
@@ -76,14 +77,14 @@ func GenerateFile(
 
 	g.P("type handler struct {")
 	for idx, srv := range file.Services {
-		g.P("svc", idx, " ", srv.GoName + "HTTPServer")
+		g.P("svc", idx, " ", srv.GoName+"HTTPServer")
 	}
 	g.P("}")
 
 	g.P("func (h *handler) handle(ctx *fasthttp.RequestCtx) {")
 	g.P("path := string(ctx.Path())")
 	g.P("switch path {")
-	for _, srv := range file.Services {
+	for idx, srv := range file.Services {
 		// if err := genService(g, srv); err != nil {
 		for _, rpc := range srv.Methods {
 			g.Write([]byte(rpc.Comments.Leading.String()))
@@ -106,8 +107,14 @@ func GenerateFile(
 			}
 
 			g.P("case \"", path, "\":")
+			g.P("body := ", rpc.Input.GoIdent.GoName, "{}")
+			g.P("json.Unmarshal(ctx.PostBody(), &body)")
+			g.P("h.svc", idx, ".", rpc.GoName, "(")
+			g.P("ctx,")
+			g.P("&body,")
+			g.P(")")
 			g.Write([]byte(rpc.Comments.Trailing.String()))
-		}	
+		}
 	}
 	g.P("}")
 	g.P("}")
