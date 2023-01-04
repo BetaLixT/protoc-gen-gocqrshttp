@@ -1,4 +1,4 @@
-module github.com/BetaLixT/protoc-gen-gohttp
+module github.com/BetaLixT/protoc-gen-gocqrshttp
 
 go 1.19
 
