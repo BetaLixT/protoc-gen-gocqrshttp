@@ -55,9 +55,12 @@ func GenerateFile(
 	// imports
 	g.P("import (")
 	g.P("\t\"context\"")
+	g.P("\"google.golang.org/grpc\"")
 	g.P("\"encoding/json\"")
 	g.P("\t\"github.com/valyala/fasthttp\"")
 	g.P(")")
+
+	g.P("type HTTPServerInterceptor func(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (resp interface{}, err error)")
 
 	cnqs := map[string]struct{}{}
 	for _, srv := range file.Services {
@@ -81,8 +84,25 @@ func GenerateFile(
 	}
 	g.P("}")
 
+	// TODO: implementation of interceptor
+	g.P("func RegisterHandler(")
+	g.P("srv *fasthttp.Server,")
+	g.P("inter *HTTPServerInterceptor,")
+	for idx, srv := range file.Services {
+		g.P("svc", idx, " ", srv.GoName+"HTTPServer,")
+	}
+	g.P(") {")
+	g.P("hndlr := handler {")
+	for idx := range file.Services {
+		g.P("svc", idx, ": svc", idx, ",")
+	}
+	g.P("}")
+	g.P("srv.Handler = hndlr.handle")
+	g.P("}")
+
 	g.P("func (h *handler) handle(ctx *fasthttp.RequestCtx) {")
 	g.P("path := string(ctx.Path())")
+	g.P("var err error")
 	g.P("switch path {")
 	for idx, srv := range file.Services {
 		// if err := genService(g, srv); err != nil {
@@ -108,14 +128,27 @@ func GenerateFile(
 
 			g.P("case \"", path, "\":")
 			g.P("body := ", rpc.Input.GoIdent.GoName, "{}")
+			// TODO: easyjson
 			g.P("json.Unmarshal(ctx.PostBody(), &body)")
-			g.P("h.svc", idx, ".", rpc.GoName, "(")
+			g.P("var res *", rpc.Output.GoIdent.GoName)
+			g.P("res, err = h.svc", idx, ".", rpc.GoName, "(")
 			g.P("ctx,")
 			g.P("&body,")
 			g.P(")")
+			g.P("if err == nil {")
+			// TODO: easyjson
+			g.P("var data []byte")
+			g.P("data, err = json.Marshal(res)")
+			g.P("ctx.SetStatusCode(200)")
+			g.P("ctx.SetContentType(\"application/json\")")
+			g.P("ctx.SetBody(data)")
+			g.P("return")
+			g.P("}")
 			g.Write([]byte(rpc.Comments.Trailing.String()))
 		}
 	}
+	g.P("default:")
+	g.P("ctx.SetStatusCode(404)")
 	g.P("}")
 	g.P("}")
 
