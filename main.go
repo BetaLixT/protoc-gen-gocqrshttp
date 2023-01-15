@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 	"strings"
-	"unicode"
 
 	// "google.golang.org/genproto/googleapis/api/annotations"
 	"google.golang.org/protobuf/compiler/protogen"
@@ -52,63 +51,15 @@ func GenerateFile(
 	g.P()
 	g.P("package ", file.GoPackageName)
 
-	// imports
-	g.P("import (")
-	g.P("\t\"context\"")
-	g.P("\"google.golang.org/grpc\"")
-	g.P("\"encoding/json\"")
-	g.P("\t\"github.com/valyala/fasthttp\"")
-	g.P(")")
-
-	g.P("type HTTPServerInterceptor func(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (resp interface{}, err error)")
-
 	cnqs := map[string]struct{}{}
+	srvs := []Server{}
 	for _, srv := range file.Services {
 		// if err := genService(g, srv); err != nil {
 		// 	return err
 		// }
-		intname := srv.GoName + "HTTPServer"
-		g.P(fmt.Sprintf("// %s", srv.GoName))
-		g.P("type ", intname, " interface {")
+
+		pths := []APIPath{}
 		for _, rpc := range srv.Methods {
-			g.Write([]byte(rpc.Comments.Leading.String()))
-			g.P("\t", rpc.GoName, "(context.Context, *", rpc.Input.GoIdent.GoName, ") (*", rpc.Output.GoIdent.GoName, ", error)")
-			g.Write([]byte(rpc.Comments.Trailing.String()))
-		}
-		g.P("}")
-	}
-
-	g.P("type handler struct {")
-	for idx, srv := range file.Services {
-		g.P("svc", idx, " ", srv.GoName+"HTTPServer")
-	}
-	g.P("}")
-
-	// TODO: implementation of interceptor
-	g.P("func RegisterHandler(")
-	g.P("srv *fasthttp.Server,")
-	g.P("inter *HTTPServerInterceptor,")
-	for idx, srv := range file.Services {
-		g.P("svc", idx, " ", srv.GoName+"HTTPServer,")
-	}
-	g.P(") {")
-	g.P("hndlr := handler {")
-	for idx := range file.Services {
-		g.P("svc", idx, ": svc", idx, ",")
-	}
-	g.P("}")
-	g.P("srv.Handler = hndlr.handle")
-	g.P("}")
-
-	g.P("func (h *handler) handle(ctx *fasthttp.RequestCtx) {")
-	g.P("path := string(ctx.Path())")
-	g.P("var err error")
-	g.P("switch path {")
-	for idx, srv := range file.Services {
-		// if err := genService(g, srv); err != nil {
-		for _, rpc := range srv.Methods {
-			g.Write([]byte(rpc.Comments.Leading.String()))
-
 			if _, ok := cnqs[rpc.Input.GoIdent.GoName]; !ok {
 				cnqs[rpc.Input.GoIdent.GoName] = struct{}{}
 			} else {
@@ -117,57 +68,26 @@ func GenerateFile(
 
 			var path string
 			if strings.Contains(rpc.Input.GoIdent.GoName, "Command") {
-				cmd := toLower(strings.TrimSuffix(rpc.Input.GoIdent.GoName, "Command"))
+				cmd := toPrivateName(strings.TrimSuffix(rpc.Input.GoIdent.GoName, "Command"))
 				path = "/commands/" + cmd
 			} else if strings.Contains(rpc.Input.GoIdent.GoName, "Query") {
-				cmd := toLower(strings.TrimSuffix(rpc.Input.GoIdent.GoName, "Query"))
+				cmd := toPrivateName(strings.TrimSuffix(rpc.Input.GoIdent.GoName, "Query"))
 				path = "/queries/" + cmd
 			} else {
 				return fmt.Errorf("non command/query model used as input %s", rpc.Input.GoIdent.GoName)
 			}
 
-			g.P("case \"", path, "\":")
-			g.P("body := ", rpc.Input.GoIdent.GoName, "{}")
-			// TODO: easyjson
-			g.P("json.Unmarshal(ctx.PostBody(), &body)")
-			g.P("var res *", rpc.Output.GoIdent.GoName)
-			g.P("res, err = h.svc", idx, ".", rpc.GoName, "(")
-			g.P("ctx,")
-			g.P("&body,")
-			g.P(")")
-			g.P("if err == nil {")
-			// TODO: easyjson
-			g.P("var data []byte")
-			g.P("data, err = json.Marshal(res)")
-			g.P("ctx.SetStatusCode(200)")
-			g.P("ctx.SetContentType(\"application/json\")")
-			g.P("ctx.SetBody(data)")
-			g.P("return")
-			g.P("}")
-			g.Write([]byte(rpc.Comments.Trailing.String()))
+			pths = append(pths, APIPath{
+				Method:     rpc,
+				Path:       path,
+				HTTPMethod: "POST",
+			})
 		}
+		srvs = append(srvs, Server{
+			Service: srv,
+			Paths:   pths,
+		})
 	}
-	g.P("default:")
-	g.P("ctx.SetStatusCode(404)")
-	g.P("}")
-	g.P("}")
 
-	return nil
-}
-
-// func (ctrl *GroupsController) RegisterRoutes(grp *gin.RouterGroup) {
-// 	grp.POST("/groups/callback", ctrl.handleGroupChange)
-// }
-
-type request struct {
-	Method  string
-	Path    string
-	Handler string
-}
-
-func toLower(in string) (out string) {
-	inr := []rune(in)
-	inr[0] = unicode.ToLower(inr[0])
-	out = string(inr)
-	return
+	return generateHTTPServers(srvs, g)
 }
