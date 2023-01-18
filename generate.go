@@ -11,7 +11,7 @@ func generateHTTPServers(
 	srvs []Server,
 	g *protogen.GeneratedFile,
 ) error {
-	
+
 	// imports
 	g.P("import (")
 	g.P("\t\"context\"")
@@ -39,6 +39,7 @@ func generateHTTPServers(
 
 		for _, rpc := range srv.Paths {
 
+			g.P("// ", rpc.Description)
 			g.P("func (p *", ctrlName, ")", toPrivateName(rpc.Method.GoName), "(ctx *gin.Context) {")
 
 			g.P("body := ", rpc.Method.Input.GoIdent.GoName, "{}")
@@ -71,6 +72,17 @@ func generateHTTPServers(
 		g.P("}")
 	}
 
+	return nil
+}
+
+func generateOpenAPI(
+	srvs []Server,
+	g *protogen.GeneratedFile,
+	file *protogen.File,
+) error {
+	g.P("openapi: 3.0.3")
+	g.P("info:")
+	g.P("  title: ", file.Desc.Package())
 	return nil
 }
 
