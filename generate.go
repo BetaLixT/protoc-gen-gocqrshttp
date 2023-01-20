@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"strings"
 	"unicode"
 
 	"google.golang.org/protobuf/compiler/protogen"
@@ -83,6 +84,64 @@ func generateOpenAPI(
 	g.P("openapi: 3.0.3")
 	g.P("info:")
 	g.P("  title: ", file.Desc.Package())
+	g.P("paths:")
+	for _, svc := range srvs {
+		for _, api := range svc.Paths {
+			g.P("  ", api.Path, ":")
+			g.P("    ", strings.ToLower(api.HTTPMethod), ":")
+			if len(api.Tags) != 0 {
+				g.P("      tags:")
+				for _, tag := range api.Tags {
+					g.P("        - ", tag)
+				}
+			}
+			g.P("      summary: ", api.Summary)         // TODO: escaping
+			g.P("      description: ", api.Description) // TODO: escaping
+			// g.P("      requestBody: ")
+
+		}
+		// paths:
+		//   /pet:
+		//     put:
+		//       tags:
+		//         - pet
+		//       summary: Update an existing pet
+		//       description: Update an existing pet by Id
+		//       operationId: updatePet
+		//       requestBody:
+		//         description: Update an existent pet in the store
+		//         content:
+		//           application/json:
+		//             schema:
+		//               $ref: '#/components/schemas/Pet'
+		//           application/xml:
+		//             schema:
+		//               $ref: '#/components/schemas/Pet'
+		//           application/x-www-form-urlencoded:
+		//             schema:
+		//               $ref: '#/components/schemas/Pet'
+		//         required: true
+		//       responses:
+		//         '200':
+		//           description: Successful operation
+		//           content:
+		//             application/json:
+		//               schema:
+		//                 $ref: '#/components/schemas/Pet'
+		//             application/xml:
+		//               schema:
+		//                 $ref: '#/components/schemas/Pet'
+		//         '400':
+		//           description: Invalid ID supplied
+		//         '404':
+		//           description: Pet not found
+		//         '405':
+		//           description: Validation exception
+		//       security:
+		//         - petstore_auth:
+		//             - write:pets
+		//             - read:pets
+	}
 	return nil
 }
 

@@ -16,7 +16,7 @@ syntax = "proto3";
 
 package custom;
 
-import "custom/documentation.proto";
+import "documentation.proto";
 import "google/protobuf/descriptor.proto";
 
 option go_package = "custom/annotations;annotations";
