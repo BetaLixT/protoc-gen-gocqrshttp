@@ -243,9 +243,17 @@ func generateOpenAPIComponentSchema(
 				g.P(prfx, "          format: byte")
 				g.P(prfx, "          example: false")
 			case protoreflect.MessageKind:
-				foundMessages = append(foundMessages, field.Message)
-				// TODO: handle timestamp
-				g.P(prfx, "          $ref: '#/components/schemas/", field.Message.GoIdent.GoName, "'")
+				if field.Message.Desc.FullName() == "google.protobuf.Timestamp" {
+					g.P(prfx, "          type: string")
+					g.P(prfx, "          format: date-time")
+					g.P(prfx, "          example: '2017-07-21T17:32:28Z'")
+				} else if field.Message.Desc.FullName() == "google.protobuf.Struct" {
+					g.P(prfx, "          type: object")
+				} else {
+					foundMessages = append(foundMessages, field.Message)
+					g.P(prfx, "          $ref: '#/components/schemas/", field.Message.GoIdent.GoName, "'")
+				}
+
 			case protoreflect.GroupKind: // TODO
 			}
 		}
