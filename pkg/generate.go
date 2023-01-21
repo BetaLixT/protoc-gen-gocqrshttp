@@ -195,17 +195,30 @@ func generateOpenAPIComponentSchema(
 		g.P("      type: object")
 		g.P("      properties:")
 		// TODO: handle maps
-		for _, field := range m.Fields {
+		for _, fld := range m.Fields {
+			field := fld
 			g.P("        ", field.Desc.JSONName(), ":")
-			kind := field.Desc.Kind()
+			
 
 			prfx := ""
+			if field.Desc.IsMap() {
+				for _, f := range field.Message.Fields {
+					if f.Desc.JSONName() == "value" {
+						g.P("          type: object")
+						g.P("          additionalProperties:")
+						prfx = "  "
+						field = f
+					}
+				}
+
+			}
 			if field.Desc.IsList() {
 				g.P("          type: array")
 				g.P("          items:")
 				prfx = "  "
 			}
 
+			kind := field.Desc.Kind()
 			switch kind {
 			case protoreflect.BoolKind:
 				g.P(prfx, "          type: boolean")
