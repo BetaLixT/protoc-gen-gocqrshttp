@@ -7,8 +7,10 @@ import (
 	// "google.golang.org/genproto/googleapis/api/annotations"
 	// "google.golang.org/genproto/googleapis/api/serviceconfig"
 	"google.golang.org/protobuf/compiler/protogen"
-	"techunicorn.com/protoc-gen-gocqrshttp/pkg"
+	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/types/descriptorpb"
 	"techunicorn.com/protoc-gen-gocqrshttp/custom/annotations"
+	"techunicorn.com/protoc-gen-gocqrshttp/pkg"
 	// "google.golang.org/protobuf/proto"
 	// "google.golang.org/protobuf/runtime/protoimpl"
 	// "google.golang.org/protobuf/types/descriptorpb"
@@ -89,11 +91,22 @@ func GenerateFile(
 				return fmt.Errorf("non command/query model used as input %s", rpc.Input.GoIdent.GoName)
 			}
 
+			options, ok := rpc.Desc.Options().(*descriptorpb.MethodOptions)
+			if !ok {
+				return fmt.Errorf("documentation missing from rpc")
+			}
+
+			doc, ok := proto.GetExtension(options, annotations.E_Documentation).(*annotations.Documentation)
+			if !ok {
+				return fmt.Errorf("documentation missing from rpc")
+			}
+
 			pths = append(pths, pkg.APIPath{
 				Method:      rpc,
 				Path:        path,
-				Summary:     string(rpc.Comments.Leading),
-				Description: string(rpc.Comments.Leading),
+				Summary:     doc.Summary,
+				Description: doc.Description,
+				Tags:        doc.Tags,
 				HTTPMethod:  "POST",
 			})
 		}
