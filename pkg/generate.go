@@ -194,7 +194,6 @@ func generateOpenAPIComponentSchema(
 		g.P("    ", m.GoIdent.GoName, ":")
 		g.P("      type: object")
 		g.P("      properties:")
-		// TODO: handle maps
 		for _, fld := range m.Fields {
 			field := fld
 			g.P("        ", field.Desc.JSONName(), ":")
@@ -224,6 +223,13 @@ func generateOpenAPIComponentSchema(
 				g.P(prfx, "          type: boolean")
 				g.P(prfx, "          example: false")
 			case protoreflect.EnumKind: // TODO
+			  g.P(prfx, "          type: string")
+			  
+			  values := field.Enum.Values[0].Desc.Name()
+			  for i := 1; i < len(field.Enum.Values); i++ {
+			  	values = values + ", " + field.Enum.Values[i].Desc.Name()
+			  }
+				g.P(prfx, "          enum: [", values,"]")
 			case protoreflect.Int32Kind,
 				protoreflect.Sint32Kind,
 				protoreflect.Uint32Kind:
