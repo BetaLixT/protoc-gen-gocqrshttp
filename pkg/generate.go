@@ -194,50 +194,58 @@ func generateOpenAPIComponentSchema(
 		g.P("    ", m.GoIdent.GoName, ":")
 		g.P("      type: object")
 		g.P("      properties:")
-		// TODO: handle arrays
+		// TODO: handle maps
 		for _, field := range m.Fields {
 			g.P("        ", field.Desc.JSONName(), ":")
 			kind := field.Desc.Kind()
+
+			prfx := ""
+			if field.Desc.IsList() {
+				g.P("          type: array")
+				g.P("          items:")
+				prfx = "  "
+			}
+
 			switch kind {
 			case protoreflect.BoolKind:
-				g.P("          type: boolean")
-				g.P("          example: false")
+				g.P(prfx, "          type: boolean")
+				g.P(prfx, "          example: false")
 			case protoreflect.EnumKind: // TODO
 			case protoreflect.Int32Kind,
 				protoreflect.Sint32Kind,
 				protoreflect.Uint32Kind:
-				g.P("          type: integer")
-				g.P("          format: int32")
-				g.P("          example: 1")
+				g.P(prfx, "          type: integer")
+				g.P(prfx, "          format: int32")
+				g.P(prfx, "          example: 1")
 			case protoreflect.Int64Kind,
 				protoreflect.Sint64Kind,
 				protoreflect.Uint64Kind:
-				g.P("          type: integer")
-				g.P("          format: int64")
-				g.P("          example: 1")
+				g.P(prfx, "          type: integer")
+				g.P(prfx, "          format: int64")
+				g.P(prfx, "          example: 1")
 			case protoreflect.Sfixed32Kind,
 				protoreflect.Fixed32Kind,
 				protoreflect.FloatKind:
-				g.P("          type: number")
-				g.P("          format: float")
-				g.P("          example: 1.0")
+				g.P(prfx, "          type: number")
+				g.P(prfx, "          format: float")
+				g.P(prfx, "          example: 1.0")
 			case protoreflect.Sfixed64Kind,
 				protoreflect.Fixed64Kind,
 				protoreflect.DoubleKind:
-				g.P("          type: number")
-				g.P("          format: double")
-				g.P("          example: 1.0")
+				g.P(prfx, "          type: number")
+				g.P(prfx, "          format: double")
+				g.P(prfx, "          example: 1.0")
 			case protoreflect.StringKind:
-				g.P("          type: string")
-				g.P("          example: sample")
+				g.P(prfx, "          type: string")
+				g.P(prfx, "          example: sample")
 			case protoreflect.BytesKind:
-				g.P("          type: string")
-				g.P("          format: byte")
-				g.P("          example: false")
+				g.P(prfx, "          type: string")
+				g.P(prfx, "          format: byte")
+				g.P(prfx, "          example: false")
 			case protoreflect.MessageKind:
 				foundMessages = append(foundMessages, field.Message)
 				// TODO: handle timestamp
-				g.P("          $ref: '#/components/schemas/", field.Message.GoIdent.GoName, "'")
+				g.P(prfx, "          $ref: '#/components/schemas/", field.Message.GoIdent.GoName, "'")
 			case protoreflect.GroupKind: // TODO
 			}
 		}
