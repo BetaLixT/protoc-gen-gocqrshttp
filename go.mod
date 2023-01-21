@@ -1,4 +1,4 @@
-module github.com/BetaLixT/protoc-gen-gocqrshttp
+module techunicorn.com/protoc-gen-gocqrshttp
 
 go 1.19
 

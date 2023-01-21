@@ -1,4 +1,4 @@
-package main
+package pkg
 
 import (
 	"fmt"
@@ -8,7 +8,7 @@ import (
 	"google.golang.org/protobuf/compiler/protogen"
 )
 
-func generateHTTPServers(
+func GenerateHTTPServers(
 	srvs []Server,
 	g *protogen.GeneratedFile,
 ) error {
@@ -33,7 +33,7 @@ func generateHTTPServers(
 
 		// controllers
 		// TODO: handle path and query parameter type :)
-		ctrlName := toPrivateName(srv.Service.GoName)
+		ctrlName := ToPrivateName(srv.Service.GoName)
 		g.P("type ", ctrlName, " struct {")
 		g.P("app ", intname)
 		g.P("}")
@@ -41,7 +41,7 @@ func generateHTTPServers(
 		for _, rpc := range srv.Paths {
 
 			g.P("// ", rpc.Description)
-			g.P("func (p *", ctrlName, ")", toPrivateName(rpc.Method.GoName), "(ctx *gin.Context) {")
+			g.P("func (p *", ctrlName, ")", ToPrivateName(rpc.Method.GoName), "(ctx *gin.Context) {")
 
 			g.P("body := ", rpc.Method.Input.GoIdent.GoName, "{}")
 			if rpc.HTTPMethod != "GET" {
@@ -68,7 +68,7 @@ func generateHTTPServers(
 		g.P(") {")
 		g.P("ctrl := ", ctrlName, "{app: srv}")
 		for _, rpc := range srv.Paths {
-			g.P("grp.", rpc.HTTPMethod, "(\"", rpc.Path, "\", ", "ctrl.", toPrivateName(rpc.Method.GoName), ")")
+			g.P("grp.", rpc.HTTPMethod, "(\"", rpc.Path, "\", ", "ctrl.", ToPrivateName(rpc.Method.GoName), ")")
 		}
 		g.P("}")
 	}
@@ -76,7 +76,7 @@ func generateHTTPServers(
 	return nil
 }
 
-func generateOpenAPI(
+func GenerateOpenAPI(
 	srvs []Server,
 	g *protogen.GeneratedFile,
 	file *protogen.File,
@@ -145,7 +145,7 @@ func generateOpenAPI(
 	return nil
 }
 
-func toPrivateName(in string) (out string) {
+func ToPrivateName(in string) (out string) {
 	inr := []rune(in)
 	inr[0] = unicode.ToLower(inr[0])
 	out = string(inr)

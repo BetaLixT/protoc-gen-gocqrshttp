@@ -7,6 +7,8 @@ import (
 	// "google.golang.org/genproto/googleapis/api/annotations"
 	// "google.golang.org/genproto/googleapis/api/serviceconfig"
 	"google.golang.org/protobuf/compiler/protogen"
+	"techunicorn.com/protoc-gen-gocqrshttp/pkg"
+	"techunicorn.com/protoc-gen-gocqrshttp/custom/annotations"
 	// "google.golang.org/protobuf/proto"
 	// "google.golang.org/protobuf/runtime/protoimpl"
 	// "google.golang.org/protobuf/types/descriptorpb"
@@ -62,13 +64,13 @@ func GenerateFile(
 	openapi.P("# source: ", file.Desc.Path())
 
 	cnqs := map[string]struct{}{}
-	srvs := []Server{}
+	srvs := []pkg.Server{}
 	for _, srv := range file.Services {
 		// if err := genService(g, srv); err != nil {
 		// 	return err
 		// }
 
-		pths := []APIPath{}
+		pths := []pkg.APIPath{}
 		for _, rpc := range srv.Methods {
 			if _, ok := cnqs[rpc.Input.GoIdent.GoName]; !ok {
 				cnqs[rpc.Input.GoIdent.GoName] = struct{}{}
@@ -78,33 +80,33 @@ func GenerateFile(
 
 			var path string
 			if strings.Contains(rpc.Input.GoIdent.GoName, "Command") {
-				cmd := toPrivateName(strings.TrimSuffix(rpc.Input.GoIdent.GoName, "Command"))
+				cmd := pkg.ToPrivateName(strings.TrimSuffix(rpc.Input.GoIdent.GoName, "Command"))
 				path = "/commands/" + cmd
 			} else if strings.Contains(rpc.Input.GoIdent.GoName, "Query") {
-				cmd := toPrivateName(strings.TrimSuffix(rpc.Input.GoIdent.GoName, "Query"))
+				cmd := pkg.ToPrivateName(strings.TrimSuffix(rpc.Input.GoIdent.GoName, "Query"))
 				path = "/queries/" + cmd
 			} else {
 				return fmt.Errorf("non command/query model used as input %s", rpc.Input.GoIdent.GoName)
 			}
 
-			pths = append(pths, APIPath{
-				Method:     rpc,
-				Path:       path,
-				Summary:    string(rpc.Comments.Leading),
+			pths = append(pths, pkg.APIPath{
+				Method:      rpc,
+				Path:        path,
+				Summary:     string(rpc.Comments.Leading),
 				Description: string(rpc.Comments.Leading),
-				HTTPMethod: "POST",
+				HTTPMethod:  "POST",
 			})
 		}
-		srvs = append(srvs, Server{
+		srvs = append(srvs, pkg.Server{
 			Service: srv,
 			Paths:   pths,
 		})
 	}
 
-	err := generateHTTPServers(srvs, gohttp)
+	err := pkg.GenerateHTTPServers(srvs, gohttp)
 	if err != nil {
 		return err
 	}
 
-	return generateOpenAPI(srvs, openapi, file)
+	return pkg.GenerateOpenAPI(srvs, openapi, file)
 }

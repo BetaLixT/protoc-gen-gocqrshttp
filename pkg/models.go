@@ -1,4 +1,4 @@
-package main
+package pkg
 
 import "google.golang.org/protobuf/compiler/protogen"
 
