@@ -56,9 +56,18 @@ func GenerateHTTPServers(
 				g.P("body.", pth.ModelParameter, "= ctx.Param(\",", pth.Key, "\")")
 			}
 
-			g.P("p.app.", rpc.Method.GoName, "(")
+			g.P("res, err := p.app.", rpc.Method.GoName, "(")
 			g.P("ctx,")
 			g.P("&body,")
+			g.P(")")
+			g.P("if err != nil {")
+			g.P("ctx.Error(err)")
+			g.P("return")
+			g.P("}")
+			g.P("ctx.Status(200)")
+			g.P("easyjson.MarshalToHTTPResponseWriter(")
+			g.P("res,")
+			g.P("ctx.Writer,")
 			g.P(")")
 			g.P("}")
 		}
@@ -85,7 +94,7 @@ func GenerateOpenAPI(
 	g.P("openapi: 3.0.3")
 	g.P("info:")
 	g.P("  title: ", file.Desc.Package())
-	g.P("  version: ", "'1.0'")
+	g.P("  version: ", "'1.0'") // TODO: better way to figure this out
 	g.P("paths:")
 	for _, svc := range srvs {
 		for _, api := range svc.Paths {
@@ -115,47 +124,6 @@ func GenerateOpenAPI(
 			g.P("                $ref: '#/components/schemas/", api.Method.Output.GoIdent.GoName, "'")
 
 		}
-		// paths:
-		//   /pet:
-		//     put:
-		//       tags:
-		//         - pet
-		//       summary: Update an existing pet
-		//       description: Update an existing pet by Id
-		//       operationId: updatePet
-		//       requestBody:
-		//         description: Update an existent pet in the store
-		//         content:
-		//           application/json:
-		//             schema:
-		//               $ref: '#/components/schemas/Pet'
-		//           application/xml:
-		//             schema:
-		//               $ref: '#/components/schemas/Pet'
-		//           application/x-www-form-urlencoded:
-		//             schema:
-		//               $ref: '#/components/schemas/Pet'
-		//         required: true
-		//       responses:
-		//         '200':
-		//           description: Successful operation
-		//           content:
-		//             application/json:
-		//               schema:
-		//                 $ref: '#/components/schemas/Pet'
-		//             application/xml:
-		//               schema:
-		//                 $ref: '#/components/schemas/Pet'
-		//         '400':
-		//           description: Invalid ID supplied
-		//         '404':
-		//           description: Pet not found
-		//         '405':
-		//           description: Validation exception
-		//       security:
-		//         - petstore_auth:
-		//             - write:pets
-		//             - read:pets
 	}
 
 	g.P("components:")
@@ -206,7 +174,6 @@ func generateOpenAPIComponentSchema(
 		for _, fld := range m.Fields {
 			field := fld
 			g.P("        ", field.Desc.JSONName(), ":")
-			
 
 			prfx := ""
 			if field.Desc.IsMap() {
@@ -225,20 +192,20 @@ func generateOpenAPIComponentSchema(
 				g.P("          items:")
 				prfx = "  "
 			}
-			
+
 			kind := field.Desc.Kind()
 			switch kind {
 			case protoreflect.BoolKind:
 				g.P(prfx, "          type: boolean")
 				g.P(prfx, "          example: false")
 			case protoreflect.EnumKind: // TODO
-			  g.P(prfx, "          type: string")
-			  
-			  values := field.Enum.Values[0].Desc.Name()
-			  for i := 1; i < len(field.Enum.Values); i++ {
-			  	values = values + ", " + field.Enum.Values[i].Desc.Name()
-			  }
-				g.P(prfx, "          enum: [", values,"]")
+				g.P(prfx, "          type: string")
+
+				values := field.Enum.Values[0].Desc.Name()
+				for i := 1; i < len(field.Enum.Values); i++ {
+					values = values + ", " + field.Enum.Values[i].Desc.Name()
+				}
+				g.P(prfx, "          enum: [", values, "]")
 			case protoreflect.Int32Kind,
 				protoreflect.Sint32Kind,
 				protoreflect.Uint32Kind:
