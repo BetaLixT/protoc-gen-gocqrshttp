@@ -85,6 +85,7 @@ func GenerateOpenAPI(
 	g.P("openapi: 3.0.3")
 	g.P("info:")
 	g.P("  title: ", file.Desc.Package())
+	g.P("  version: ", "'1.0'")
 	g.P("paths:")
 	for _, svc := range srvs {
 		for _, api := range svc.Paths {
@@ -98,8 +99,16 @@ func GenerateOpenAPI(
 			}
 			g.P("      summary: ", api.Summary)         // TODO: escaping
 			g.P("      description: ", api.Description) // TODO: escaping
+			g.P("      requestBody:")
+			g.P("        description: ", api.Method.Input.GoIdent.GoName)
+			g.P("        content:")
+			g.P("          application/json:")
+			g.P("            schema:")
+			g.P("              $ref: '#/components/schemas/", api.Method.Input.GoIdent.GoName, "'")
+			g.P("        required: true")
 			g.P("      responses:")
 			g.P("        '200':")
+			g.P("          description: ", api.Method.Output.GoIdent.GoName)
 			g.P("          content: ")
 			g.P("            application/json:")
 			g.P("              schema:")
@@ -216,7 +225,7 @@ func generateOpenAPIComponentSchema(
 				g.P("          items:")
 				prfx = "  "
 			}
-
+			
 			kind := field.Desc.Kind()
 			switch kind {
 			case protoreflect.BoolKind:
