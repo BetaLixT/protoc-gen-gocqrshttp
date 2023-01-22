@@ -116,7 +116,7 @@ func GenerateFile(
 		})
 	}
 
-	err := pkg.GenerateHTTPServers(srvs, gohttp)
+	err := pkg.GenerateHTTPServers(srvs, gohttp, file)
 	if err != nil {
 		return err
 	}

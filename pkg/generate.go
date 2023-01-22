@@ -12,22 +12,24 @@ import (
 func GenerateHTTPServers(
 	srvs []Server,
 	g *protogen.GeneratedFile,
+	file *protogen.File,
 ) error {
 
-	// imports
-	g.P("import (")
-	g.P("\t\"context\"")
-	g.P("\t\"github.com/gin-gonic/gin\"")
-	g.P("\"github.com/mailru/easyjson\"")
-	g.P(")")
+	contextPackage := protogen.GoImportPath("context")
+	ginPackage := protogen.GoImportPath("github.com/gin-gonic/gin")
+	easyjsonPackage := protogen.GoImportPath("github.com/mailru/easyjson")
 
 	for _, srv := range srvs {
 		intname := srv.Service.GoName + "HTTPServer"
 		g.P(fmt.Sprintf("// %s", srv.Service.GoName))
 		g.P("type ", intname, " interface {")
 		for _, rpc := range srv.Paths {
+			// inputStructName := rpc.Method.Input.GoIdent.GoName
+			// if _, ok := imports[rpc.Method.Input.GoIdent.GoImportPath]; ok {
+			// 	inputStructName = rpc.Method.Input.GoIdent.GoImportPath.Ident(inputStructName)
+			// }
 			g.Write([]byte(rpc.Method.Comments.Leading.String()))
-			g.P("\t", rpc.Method.GoName, "(context.Context, *", rpc.Method.Input.GoIdent.GoName, ") (*", rpc.Method.Output.GoIdent.GoName, ", error)")
+			g.P("\t", rpc.Method.GoName, "(", contextPackage.Ident("Context"), ", *", rpc.Method.Input.GoIdent, ") (*", rpc.Method.Output.GoIdent, ", error)")
 			g.Write([]byte(rpc.Method.Comments.Trailing.String()))
 		}
 		g.P("}")
@@ -42,12 +44,12 @@ func GenerateHTTPServers(
 		for _, rpc := range srv.Paths {
 
 			g.P("// ", rpc.Description)
-			g.P("func (p *", ctrlName, ")", ToPrivateName(rpc.Method.GoName), "(ctx *gin.Context) {")
+			g.P("func (p *", ctrlName, ")", ToPrivateName(rpc.Method.GoName), "(ctx *", ginPackage.Ident("Context"), ") {")
 
-			g.P("body := ", rpc.Method.Input.GoIdent.GoName, "{}")
+			g.P("body := ", rpc.Method.Input.GoIdent, "{}")
 			if rpc.HTTPMethod != "GET" {
 				// if anything left in body
-				g.P("easyjson.UnmarshalFromReader(ctx.Request.Body, &body)")
+				g.P(easyjsonPackage.Ident("UnmarshalFromReader"), "(ctx.Request.Body, &body)")
 			}
 			for _, qpm := range rpc.QueryParameters {
 				g.P("body.", qpm.ModelParameter, "= ctx.Query(\",", qpm.Key, "\")")
@@ -65,7 +67,7 @@ func GenerateHTTPServers(
 			g.P("return")
 			g.P("}")
 			g.P("ctx.Status(200)")
-			g.P("easyjson.MarshalToHTTPResponseWriter(")
+			g.P(easyjsonPackage.Ident("MarshalToHTTPResponseWriter"), "(")
 			g.P("res,")
 			g.P("ctx.Writer,")
 			g.P(")")
@@ -73,7 +75,7 @@ func GenerateHTTPServers(
 		}
 
 		g.P("func Register", srv.Service.GoName, "HTTPServer (")
-		g.P("grp *gin.RouterGroup,")
+		g.P("grp *", ginPackage.Ident("RouterGroup"), ",")
 		g.P("srv ", intname, ",")
 		g.P(") {")
 		g.P("ctrl := ", ctrlName, "{app: srv}")
