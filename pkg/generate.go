@@ -17,7 +17,8 @@ func GenerateHTTPServers(
 
 	contextPackage := protogen.GoImportPath("context")
 	ginPackage := protogen.GoImportPath("github.com/gin-gonic/gin")
-	easyjsonPackage := protogen.GoImportPath("github.com/mailru/easyjson")
+	protojsonPackage := protogen.GoImportPath("google.golang.org/protobuf/encoding/protojson")
+	ioutilPackage := protogen.GoImportPath("io/ioutil")
 
 	for _, srv := range srvs {
 		intname := srv.Service.GoName + "HTTPServer"
@@ -48,8 +49,13 @@ func GenerateHTTPServers(
 
 			g.P("body := ", rpc.Method.Input.GoIdent, "{}")
 			if rpc.HTTPMethod != "GET" {
-				// if anything left in body
-				g.P(easyjsonPackage.Ident("UnmarshalFromReader"), "(ctx.Request.Body, &body)")
+				// TODO if anything left in body
+				g.P("raw, err :=", ioutilPackage.Ident("ReadAll"), "(ctx.Request.Body)")
+				g.P("if err != nil {")
+				g.P("	ctx.Error(err)")
+				g.P("	return")
+				g.P("}")
+				g.P(protojsonPackage.Ident("Unmarshal"), "(raw, &body)")
 			}
 			for _, qpm := range rpc.QueryParameters {
 				g.P("body.", qpm.ModelParameter, "= ctx.Query(\",", qpm.Key, "\")")
@@ -66,11 +72,19 @@ func GenerateHTTPServers(
 			g.P("ctx.Error(err)")
 			g.P("return")
 			g.P("}")
+
+			g.P("resraw, err := ", protojsonPackage.Ident("Marshal"), "(res)")
+			g.P("if err != nil {")
+			g.P("	ctx.Error(err)")
+			g.P("	return")
+			g.P("}")
 			g.P("ctx.Status(200)")
-			g.P(easyjsonPackage.Ident("MarshalToHTTPResponseWriter"), "(")
-			g.P("res,")
-			g.P("ctx.Writer,")
-			g.P(")")
+			g.P("ctx.Header(\"Content-Type\", \"application/json\")")
+			g.P("_, err = ctx.Writer.Write(resraw)")
+			g.P("if err != nil {")
+			g.P("	ctx.Error(err)")
+			g.P("	return")
+			g.P("}")
 			g.P("}")
 		}
 
