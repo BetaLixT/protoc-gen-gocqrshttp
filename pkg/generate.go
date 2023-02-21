@@ -100,7 +100,7 @@ func GenerateHTTPServers(
 			g.P("return")
 			g.P("}")
 
-			g.P("resraw, err := ", protojsonPackage.Ident("Marshal"), "(res)")
+			g.P("resraw, err := protomarsh.Marshal(res)")
 			g.P("if err != nil {")
 			g.P("	ctx.Error(err)")
 			g.P("	return")

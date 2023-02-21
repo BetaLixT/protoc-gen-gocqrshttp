@@ -50,7 +50,7 @@ func GenerateFile(
 		return nil
 	}
 	plugin.SupportedFeatures = 1
-
+	protojsonPackage := protogen.GoImportPath("google.golang.org/protobuf/encoding/protojson")
 	gofilename := file.GeneratedFilenamePrefix + ".http.go"
 	gohttp := plugin.NewGeneratedFile(gofilename, file.GoImportPath)
 
@@ -59,6 +59,11 @@ func GenerateFile(
 	gohttp.P()
 	gohttp.P("package ", file.GoPackageName)
 	gohttp.P("const InternalContextKey = \"inCxt\"")
+	gohttp.P(
+		"var protomarsh = ",
+		protojsonPackage.Ident("MarshalOptions"),
+		"{EmitUnpopulated: true}",
+	)
 
 	yamlfilename := file.GeneratedFilenamePrefix + ".http.yaml"
 	openapi := plugin.NewGeneratedFile(yamlfilename, file.GoImportPath)
