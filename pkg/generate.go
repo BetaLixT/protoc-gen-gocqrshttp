@@ -2,12 +2,14 @@
 package pkg
 
 import (
+	"encoding/json"
 	"fmt"
 	"strings"
 	"unicode"
 
 	"google.golang.org/protobuf/compiler/protogen"
 	"google.golang.org/protobuf/reflect/protoreflect"
+	"gopkg.in/yaml.v3"
 )
 
 // GenerateHTTPServers generates http servers
@@ -138,9 +140,22 @@ func GenerateHTTPServers(
 	return nil
 }
 
+type info struct {
+	Title   string `json:"title"`
+	Version string `json:"version"`
+}
+
+type path struct{}
+
+type openAPI3 struct {
+	Info info `json:"info"`
+}
+
+// GenerateOpenAPI generates open api doc
 func GenerateOpenAPI(
 	srvs []Server,
 	g *protogen.GeneratedFile,
+	gjson *protogen.GeneratedFile,
 	file *protogen.File,
 ) error {
 	g.P("openapi: 3.0.3")
@@ -206,6 +221,18 @@ func GenerateOpenAPI(
 
 		}
 	}
+
+	bytes, err := g.Content()
+	if err != nil {
+		panic(err)
+	}
+	op := map[string]interface{}{}
+	yaml.Unmarshal(bytes, &op)
+	jsonraw, err := json.Marshal(op)
+	if err != nil {
+		panic(err)
+	}
+	gjson.P(string(jsonraw))
 	return nil
 }
 
