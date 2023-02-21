@@ -58,6 +58,7 @@ func GenerateFile(
 	gohttp.P("// source: ", file.Desc.Path())
 	gohttp.P()
 	gohttp.P("package ", file.GoPackageName)
+	gohttp.P("const InternalContextKey = \"inCxt\"")
 
 	yamlfilename := file.GeneratedFilenamePrefix + ".http.yaml"
 	openapi := plugin.NewGeneratedFile(yamlfilename, file.GoImportPath)

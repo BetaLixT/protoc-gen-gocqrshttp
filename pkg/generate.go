@@ -1,3 +1,4 @@
+// Package pkg package
 package pkg
 
 import (
@@ -9,12 +10,12 @@ import (
 	"google.golang.org/protobuf/reflect/protoreflect"
 )
 
+// GenerateHTTPServers generates http servers
 func GenerateHTTPServers(
 	srvs []Server,
 	g *protogen.GeneratedFile,
 	file *protogen.File,
 ) error {
-
 	contextPackage := protogen.GoImportPath("context")
 	ginPackage := protogen.GoImportPath("github.com/gin-gonic/gin")
 	protojsonPackage := protogen.GoImportPath("google.golang.org/protobuf/encoding/protojson")
@@ -30,7 +31,17 @@ func GenerateHTTPServers(
 			// 	inputStructName = rpc.Method.Input.GoIdent.GoImportPath.Ident(inputStructName)
 			// }
 			g.Write([]byte(rpc.Method.Comments.Leading.String()))
-			g.P("\t", rpc.Method.GoName, "(", contextPackage.Ident("Context"), ", *", rpc.Method.Input.GoIdent, ") (*", rpc.Method.Output.GoIdent, ", error)")
+			g.P(
+				"\t",
+				rpc.Method.GoName,
+				"(",
+				contextPackage.Ident("Context"),
+				", *",
+				rpc.Method.Input.GoIdent,
+				") (*",
+				rpc.Method.Output.GoIdent,
+				", error)",
+			)
 			g.Write([]byte(rpc.Method.Comments.Trailing.String()))
 		}
 		g.P("}")
@@ -45,7 +56,15 @@ func GenerateHTTPServers(
 		for _, rpc := range srv.Paths {
 
 			g.P("// ", rpc.Description)
-			g.P("func (p *", ctrlName, ")", ToPrivateName(rpc.Method.GoName), "(ctx *", ginPackage.Ident("Context"), ") {")
+			g.P(
+				"func (p *",
+				ctrlName,
+				")",
+				ToPrivateName(rpc.Method.GoName),
+				"(ctx *",
+				ginPackage.Ident("Context"),
+				") {",
+			)
 
 			g.P("body := ", rpc.Method.Input.GoIdent, "{}")
 			if rpc.HTTPMethod != "GET" {
@@ -64,8 +83,16 @@ func GenerateHTTPServers(
 				g.P("body.", pth.ModelParameter, "= ctx.Param(\",", pth.Key, "\")")
 			}
 
+			g.P("var c ", contextPackage.Ident("Context"))
+			g.P("if v, ok := ctx.Get(InternalContextKey); ok {")
+			g.P("	c, _ = v.(", contextPackage.Ident("Context"), ")")
+			g.P("}")
+			g.P("if c == nil {")
+			g.P("	c = ctx")
+			g.P("}")
+
 			g.P("res, err := p.app.", rpc.Method.GoName, "(")
-			g.P("ctx,")
+			g.P("c,")
 			g.P("&body,")
 			g.P(")")
 			g.P("if err != nil {")
@@ -94,7 +121,16 @@ func GenerateHTTPServers(
 		g.P(") {")
 		g.P("ctrl := ", ctrlName, "{app: srv}")
 		for _, rpc := range srv.Paths {
-			g.P("grp.", rpc.HTTPMethod, "(\"", rpc.Path, "\", ", "ctrl.", ToPrivateName(rpc.Method.GoName), ")")
+			g.P(
+				"grp.",
+				rpc.HTTPMethod,
+				"(\"",
+				rpc.Path,
+				"\", ",
+				"ctrl.",
+				ToPrivateName(rpc.Method.GoName),
+				")",
+			)
 		}
 		g.P("}")
 	}
@@ -137,7 +173,11 @@ func GenerateOpenAPI(
 			g.P("          content: ")
 			g.P("            application/json:")
 			g.P("              schema:")
-			g.P("                $ref: '#/components/schemas/", api.Method.Output.GoIdent.GoName, "'")
+			g.P(
+				"                $ref: '#/components/schemas/",
+				api.Method.Output.GoIdent.GoName,
+				"'",
+			)
 
 		}
 	}
@@ -201,7 +241,6 @@ func generateOpenAPIComponentSchema(
 						field = f
 					}
 				}
-
 			}
 			if field.Desc.IsList() {
 				g.P("          type: array")
